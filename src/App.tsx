@@ -7,12 +7,16 @@ import { ExpenseSummary } from "./components/ExpenseSummary";
 import { CategoryManager } from "./components/CategoryManager";
 import { Calendar } from "./components/Calendar";
 import { Toast } from "./components/Toast";
+import { ConfirmDialog } from "./components/ConfirmDialog";
+import { SavingTargets } from "./components/SavingTargets";
+import { TabNavigation } from "./components/TabNavigation";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useDarkMode } from "./hooks/useDarkMode";
 import {
   Expense,
   Category,
   ExpenseFilters as ExpenseFiltersType,
+  SavingTarget,
 } from "./types";
 import {
   defaultCategories,
@@ -23,11 +27,17 @@ import {
   generateId,
 } from "./utils/dataHelpers";
 
+type TabId = "expenses" | "targets";
+
 function App() {
   const [expenses, setExpenses] = useLocalStorage<Expense[]>("expenses", []);
   const [categories, setCategories] = useLocalStorage<Category[]>(
     "categories",
     defaultCategories.map((cat) => ({ ...cat, id: generateId() }))
+  );
+  const [savingTargets, setSavingTargets] = useLocalStorage<SavingTarget[]>(
+    "savingTargets",
+    []
   );
   const [filters, setFilters] = useState<ExpenseFiltersType>({
     dateFrom: "",
@@ -41,6 +51,12 @@ function App() {
   } | null>(null);
   const [isDark, setIsDark] = useDarkMode();
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useLocalStorage<TabId>(
+    "activeTab",
+    "expenses"
+  );
 
   const filteredExpenses = useMemo(() => {
     return filterExpenses(expenses, filters).sort(
@@ -130,19 +146,27 @@ function App() {
       });
       return;
     }
+    setIsExportDialogOpen(true);
+  };
+
+  const confirmExportData = () => {
     exportToCSV(expenses);
     setToast({ message: "データをエクスポートしました", type: "success" });
+    setIsExportDialogOpen(false);
   };
 
   const handleClearAllData = () => {
-    if (confirm("全てのデータを削除しますか？この操作は取り消せません。")) {
-      setExpenses([]);
-      setCategories(
-        defaultCategories.map((cat) => ({ ...cat, id: generateId() }))
-      );
-      setFilters({ dateFrom: "", dateTo: "", category: "", searchText: "" });
-      setToast({ message: "全てのデータを削除しました", type: "success" });
-    }
+    setIsConfirmDialogOpen(true);
+  };
+
+  const confirmClearAllData = () => {
+    setExpenses([]);
+    setCategories(
+      defaultCategories.map((cat) => ({ ...cat, id: generateId() }))
+    );
+    setFilters({ dateFrom: "", dateTo: "", category: "", searchText: "" });
+    setToast({ message: "全てのデータを削除しました", type: "success" });
+    setIsConfirmDialogOpen(false);
   };
 
   const handleDateSelect = (date: string) => {
@@ -155,6 +179,27 @@ function App() {
     setToast({ message: `${date}の支出を表示します`, type: "success" });
   };
 
+  const handleUpdateExpense = (id: string, amount: number) => {
+    setExpenses((prev) =>
+      prev.map((expense) =>
+        expense.id === id ? { ...expense, amount } : expense
+      )
+    );
+    setToast({ message: "支出を更新しました", type: "success" });
+  };
+
+  const handleAddSavingTarget = (target: SavingTarget) => {
+    setSavingTargets((prev) => [...prev, target]);
+    setToast({ message: "節約目標を追加しました", type: "success" });
+  };
+
+  const handleDeleteSavingTarget = (category: string) => {
+    setSavingTargets((prev) =>
+      prev.filter((target) => target.category !== category)
+    );
+    setToast({ message: "節約目標を削除しました", type: "success" });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 transition-colors duration-200">
       <div className="container mx-auto px-4 py-6 max-w-6xl">
@@ -165,34 +210,55 @@ function App() {
           onClearAllData={handleClearAllData}
         />
 
-        <div className="space-y-6">
-          <ExpenseForm
-            categories={categories}
-            onAddExpense={handleAddExpense}
-            onAddCategory={handleAddCategory}
-            onDeleteCategory={handleDeleteCategory}
-            onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
-          />
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-          <ExpenseFilters
-            filters={filters}
-            categories={categories}
-            onFiltersChange={setFilters}
-          />
+        {activeTab === "expenses" && (
+          <div className="space-y-6">
+            <ExpenseForm
+              categories={categories}
+              onAddExpense={handleAddExpense}
+              onAddCategory={handleAddCategory}
+              onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
+            />
 
-          <Calendar expenses={expenses} onDateSelect={handleDateSelect} />
+            <ExpenseFilters
+              filters={filters}
+              categories={categories}
+              onFiltersChange={setFilters}
+            />
 
-          <ExpenseList
-            expenses={filteredExpenses}
-            onDeleteExpense={handleDeleteExpense}
-          />
+            <Calendar
+              expenses={expenses}
+              categories={categories}
+              onDateSelect={handleDateSelect}
+              onUpdateExpense={handleUpdateExpense}
+              onDeleteExpense={handleDeleteExpense}
+            />
 
-          <ExpenseSummary
-            categorySummary={categorySummary}
-            monthlyData={monthlyData}
-            totalAmount={totalAmount}
-          />
-        </div>
+            <ExpenseList
+              expenses={filteredExpenses}
+              onDeleteExpense={handleDeleteExpense}
+            />
+
+            <ExpenseSummary
+              categorySummary={categorySummary}
+              monthlyData={monthlyData}
+              totalAmount={totalAmount}
+            />
+          </div>
+        )}
+
+        {activeTab === "targets" && (
+          <div className="space-y-6">
+            <SavingTargets
+              categories={categories}
+              expenses={expenses}
+              savingTargets={savingTargets}
+              onAddSavingTarget={handleAddSavingTarget}
+              onDeleteSavingTarget={handleDeleteSavingTarget}
+            />
+          </div>
+        )}
       </div>
 
       <CategoryManager
@@ -202,6 +268,30 @@ function App() {
         onUpdateCategory={handleUpdateCategory}
         isOpen={isCategoryManagerOpen}
         onClose={() => setIsCategoryManagerOpen(false)}
+      />
+
+      <ConfirmDialog
+        isOpen={isConfirmDialogOpen}
+        title="データ削除の確認"
+        message={"全てのデータを削除しますか？\nこの操作は取り消せません。"}
+        confirmLabel="削除する"
+        cancelLabel="キャンセル"
+        onConfirm={confirmClearAllData}
+        onCancel={() => setIsConfirmDialogOpen(false)}
+        type="warning"
+        requireConfirmation={true}
+        confirmationText="削除に同意します"
+      />
+
+      <ConfirmDialog
+        isOpen={isExportDialogOpen}
+        title="エクスポートの確認"
+        message="エクスポートを行うときはパソコンでエクスポートをしてください"
+        confirmLabel="実行"
+        cancelLabel="キャンセル"
+        onConfirm={confirmExportData}
+        onCancel={() => setIsExportDialogOpen(false)}
+        type="info"
       />
 
       {toast && (

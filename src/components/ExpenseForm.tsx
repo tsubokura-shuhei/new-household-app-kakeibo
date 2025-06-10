@@ -6,7 +6,6 @@ interface ExpenseFormProps {
   categories: Category[];
   onAddExpense: (expense: Omit<Expense, "id" | "createdAt">) => void;
   onAddCategory: (category: Omit<Category, "id">) => void;
-  onDeleteCategory: (id: string) => void;
   onOpenCategoryManager: () => void;
 }
 
@@ -14,7 +13,6 @@ export function ExpenseForm({
   categories,
   onAddExpense,
   onAddCategory,
-  onDeleteCategory,
   onOpenCategoryManager,
 }: ExpenseFormProps) {
   const [formData, setFormData] = useState({
@@ -177,15 +175,23 @@ export function ExpenseForm({
               金額 (円)
             </label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={formData.amount}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, amount: e.target.value }))
-              }
+              onChange={(e) => {
+                // 全角数字を半角に変換
+                const halfWidthValue = e.target.value.replace(
+                  /[０-９]/g,
+                  (s) => {
+                    return String.fromCharCode(s.charCodeAt(0) - 0xfee0);
+                  }
+                );
+                // 数字と小数点のみ許可
+                const numericValue = halfWidthValue.replace(/[^0-9.]/g, "");
+                setFormData((prev) => ({ ...prev, amount: numericValue }));
+              }}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
               placeholder="0"
-              min="0"
-              step="1"
               required
             />
           </div>

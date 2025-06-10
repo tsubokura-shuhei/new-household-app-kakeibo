@@ -32,3 +32,8 @@ export interface MonthlyData {
   month: string;
   amount: number;
 }
+
+export interface SavingTarget {
+  category: string;
+  amount: number;
+}

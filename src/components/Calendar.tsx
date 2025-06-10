@@ -1,18 +1,30 @@
 import React, { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight, CalendarClock } from "lucide-react";
-import { Expense } from "../types";
+import { Expense, Category } from "../types";
 import { isHoliday, getHolidayName } from "../utils/holidayData";
+import { DayExpensesModal } from "./DayExpensesModal";
 
 interface CalendarProps {
   expenses: Expense[];
+  categories: Category[];
   onDateSelect: (date: string) => void;
+  onUpdateExpense: (id: string, amount: number) => void;
+  onDeleteExpense: (id: string) => void;
 }
 
-export function Calendar({ expenses, onDateSelect }: CalendarProps) {
+export function Calendar({
+  expenses,
+  categories,
+  onDateSelect,
+  onUpdateExpense,
+  onDeleteExpense,
+}: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showHolidayTooltip, setShowHolidayTooltip] = useState<number | null>(
     null
   );
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // 現在の年と月を取得
   const currentYear = currentDate.getFullYear();
@@ -91,6 +103,11 @@ export function Calendar({ expenses, onDateSelect }: CalendarProps) {
     return expenses.some((expense) => expense.date === dateString);
   };
 
+  // 特定の日の支出を取得
+  const getExpensesForDate = (dateString: string): Expense[] => {
+    return expenses.filter((expense) => expense.date === dateString);
+  };
+
   // 日付をクリックしたときの処理
   const handleDateClick = (day: number | null) => {
     if (day === null) return;
@@ -99,6 +116,14 @@ export function Calendar({ expenses, onDateSelect }: CalendarProps) {
       2,
       "0"
     )}-${String(day).padStart(2, "0")}`;
+
+    // 選択された日付を保存
+    setSelectedDate(dateString);
+
+    // モーダルを表示
+    setIsModalOpen(true);
+
+    // フィルタリングも実行
     onDateSelect(dateString);
   };
 
@@ -260,6 +285,19 @@ export function Calendar({ expenses, onDateSelect }: CalendarProps) {
           );
         })}
       </div>
+
+      {/* 日付の支出詳細モーダル */}
+      {selectedDate && (
+        <DayExpensesModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          date={selectedDate}
+          expenses={getExpensesForDate(selectedDate)}
+          categories={categories}
+          onUpdateExpense={onUpdateExpense}
+          onDeleteExpense={onDeleteExpense}
+        />
+      )}
     </div>
   );
 }
