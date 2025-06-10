@@ -1,77 +1,86 @@
-import React, { useState } from 'react';
-import { Plus, Save, RotateCcw, Settings } from 'lucide-react';
-import { Expense, Category } from '../types';
+import React, { useState } from "react";
+import { Plus, Save, RotateCcw, Settings } from "lucide-react";
+import { Expense, Category } from "../types";
 
 interface ExpenseFormProps {
   categories: Category[];
-  onAddExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => void;
-  onAddCategory: (category: Omit<Category, 'id'>) => void;
+  onAddExpense: (expense: Omit<Expense, "id" | "createdAt">) => void;
+  onAddCategory: (category: Omit<Category, "id">) => void;
   onDeleteCategory: (id: string) => void;
   onOpenCategoryManager: () => void;
 }
 
-export function ExpenseForm({ 
-  categories, 
-  onAddExpense, 
-  onAddCategory, 
+export function ExpenseForm({
+  categories,
+  onAddExpense,
+  onAddCategory,
   onDeleteCategory,
-  onOpenCategoryManager 
+  onOpenCategoryManager,
 }: ExpenseFormProps) {
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    category: '',
-    amount: '',
-    memo: ''
+    date: new Date().toISOString().split("T")[0],
+    category: "",
+    amount: "",
+    memo: "",
   });
-  
+
   const [showNewCategory, setShowNewCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState("");
 
   const categoryColors = [
-    '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', 
-    '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
+    "#3B82F6",
+    "#10B981",
+    "#F59E0B",
+    "#EF4444",
+    "#8B5CF6",
+    "#EC4899",
+    "#06B6D4",
+    "#84CC16",
+    "#F97316",
+    "#6366F1",
   ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.category || !formData.amount) return;
-    
+
     onAddExpense({
       date: formData.date,
       category: formData.category,
       amount: parseFloat(formData.amount),
-      memo: formData.memo
+      memo: formData.memo,
     });
-    
+
     setFormData({
-      date: new Date().toISOString().split('T')[0],
-      category: '',
-      amount: '',
-      memo: ''
+      date: new Date().toISOString().split("T")[0],
+      category: "",
+      amount: "",
+      memo: "",
     });
   };
 
   const handleReset = () => {
     setFormData({
-      date: new Date().toISOString().split('T')[0],
-      category: '',
-      amount: '',
-      memo: ''
+      date: new Date().toISOString().split("T")[0],
+      category: "",
+      amount: "",
+      memo: "",
     });
   };
 
   const handleAddNewCategory = () => {
     if (!newCategoryName.trim()) return;
-    
-    const randomColor = categoryColors[Math.floor(Math.random() * categoryColors.length)];
+
+    const randomColor =
+      categoryColors[Math.floor(Math.random() * categoryColors.length)];
     onAddCategory({
       name: newCategoryName.trim(),
       color: randomColor,
-      isDefault: false
+      isDefault: false,
     });
-    
-    setFormData(prev => ({ ...prev, category: newCategoryName.trim() }));
-    setNewCategoryName('');
+
+    setFormData((prev) => ({ ...prev, category: newCategoryName.trim() }));
+    setNewCategoryName("");
     setShowNewCategory(false);
   };
 
@@ -81,7 +90,7 @@ export function ExpenseForm({
         <Plus className="w-5 h-5 text-primary-500" />
         支出を記録
       </h2>
-      
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -91,12 +100,14 @@ export function ExpenseForm({
             <input
               type="date"
               value={formData.date}
-              onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, date: e.target.value }))
+              }
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
               required
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               カテゴリ
@@ -104,12 +115,14 @@ export function ExpenseForm({
             <div className="flex gap-2">
               <select
                 value={formData.category}
-                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, category: e.target.value }))
+                }
                 className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
                 required
               >
                 <option value="">カテゴリを選択</option>
-                {categories.map(category => (
+                {categories.map((category) => (
                   <option key={category.id} value={category.name}>
                     {category.name}
                   </option>
@@ -132,7 +145,7 @@ export function ExpenseForm({
                 <Settings className="w-4 h-4" />
               </button>
             </div>
-            
+
             {showNewCategory && (
               <div className="mt-2 flex gap-2 animate-slide-up">
                 <input
@@ -141,7 +154,10 @@ export function ExpenseForm({
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   placeholder="新しいカテゴリ名"
                   className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
-                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddNewCategory())}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" &&
+                    (e.preventDefault(), handleAddNewCategory())
+                  }
                 />
                 <button
                   type="button"
@@ -154,7 +170,7 @@ export function ExpenseForm({
             )}
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -163,7 +179,9 @@ export function ExpenseForm({
             <input
               type="number"
               value={formData.amount}
-              onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, amount: e.target.value }))
+              }
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
               placeholder="0"
               min="0"
@@ -171,7 +189,7 @@ export function ExpenseForm({
               required
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               メモ
@@ -179,13 +197,15 @@ export function ExpenseForm({
             <input
               type="text"
               value={formData.memo}
-              onChange={(e) => setFormData(prev => ({ ...prev, memo: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, memo: e.target.value }))
+              }
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
               placeholder="メモ（任意）"
             />
           </div>
         </div>
-        
+
         <div className="flex gap-3 pt-2">
           <button
             type="submit"

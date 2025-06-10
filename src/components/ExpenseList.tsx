@@ -1,6 +1,6 @@
-import React from 'react';
-import { Trash2, Calendar, Tag, FileText, Pen as Yen } from 'lucide-react';
-import { Expense } from '../types';
+import React from "react";
+import { Trash2, Calendar, Tag, FileText, Pen as Yen } from "lucide-react";
+import { Expense } from "../types";
 
 interface ExpenseListProps {
   expenses: Expense[];
@@ -9,15 +9,15 @@ interface ExpenseListProps {
 
 export function ExpenseList({ expenses, onDeleteExpense }: ExpenseListProps) {
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ja-JP').format(amount);
+    return new Intl.NumberFormat("ja-JP").format(amount);
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('ja-JP', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return date.toLocaleDateString("ja-JP", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
@@ -41,10 +41,13 @@ export function ExpenseList({ expenses, onDeleteExpense }: ExpenseListProps) {
           支出一覧 ({expenses.length}件)
         </h3>
       </div>
-      
+
       <div className="divide-y divide-gray-200 dark:divide-gray-700">
         {expenses.map((expense) => (
-          <div key={expense.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors animate-fade-in">
+          <div
+            key={expense.id}
+            className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors animate-fade-in"
+          >
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-4 mb-2">
@@ -59,7 +62,7 @@ export function ExpenseList({ expenses, onDeleteExpense }: ExpenseListProps) {
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="text-xl font-bold text-gray-900 dark:text-white">
                     ¥{formatCurrency(expense.amount)}
@@ -72,7 +75,7 @@ export function ExpenseList({ expenses, onDeleteExpense }: ExpenseListProps) {
                   )}
                 </div>
               </div>
-              
+
               <button
                 onClick={() => onDeleteExpense(expense.id)}
                 className="ml-4 p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors group"

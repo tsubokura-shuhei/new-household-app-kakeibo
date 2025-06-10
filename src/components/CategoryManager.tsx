@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
-import { X, Trash2, Plus, Settings } from 'lucide-react';
-import { Category } from '../types';
+import React, { useState } from "react";
+import { X, Trash2, Plus, Settings, Palette } from "lucide-react";
+import { Category } from "../types";
+import { ColorPalette } from "./ColorPalette";
 
 interface CategoryManagerProps {
   categories: Category[];
-  onAddCategory: (category: Omit<Category, 'id'>) => void;
+  onAddCategory: (category: Omit<Category, "id">) => void;
   onDeleteCategory: (id: string) => void;
+  onUpdateCategory: (
+    id: string,
+    updatedData: Partial<Omit<Category, "id">>
+  ) => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -14,34 +19,43 @@ export function CategoryManager({
   categories,
   onAddCategory,
   onDeleteCategory,
+  onUpdateCategory,
   isOpen,
-  onClose
+  onClose,
 }: CategoryManagerProps) {
-  const [newCategoryName, setNewCategoryName] = useState('');
-
-  const categoryColors = [
-    '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
-    '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
-  ];
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryColor, setNewCategoryColor] = useState("#3B82F6"); // デフォルトの色
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
+    null
+  );
 
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;
 
-    const randomColor = categoryColors[Math.floor(Math.random() * categoryColors.length)];
     onAddCategory({
       name: newCategoryName.trim(),
-      color: randomColor,
-      isDefault: false
+      color: newCategoryColor,
+      isDefault: false,
     });
 
-    setNewCategoryName('');
+    setNewCategoryName("");
+    setNewCategoryColor("#3B82F6"); // 色をデフォルトにリセット
   };
 
   const handleDeleteCategory = (categoryId: string) => {
-    const category = categories.find(c => c.id === categoryId);
+    const category = categories.find((c) => c.id === categoryId);
     if (category && confirm(`「${category.name}」カテゴリを削除しますか？`)) {
       onDeleteCategory(categoryId);
     }
+  };
+
+  const handleColorChange = (categoryId: string, newColor: string) => {
+    onUpdateCategory(categoryId, { color: newColor });
+    setEditingCategoryId(null); // 色選択を閉じる
+  };
+
+  const openColorPalette = (categoryId: string | "new") => {
+    setEditingCategoryId(categoryId);
   };
 
   if (!isOpen) return null;
@@ -68,23 +82,39 @@ export function CategoryManager({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               新しいカテゴリを追加
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2">
               <input
                 type="text"
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 placeholder="カテゴリ名を入力"
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
-                onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+                onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
               />
-              <button
-                onClick={handleAddCategory}
-                disabled={!newCategoryName.trim()}
-                className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                追加
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="flex items-center gap-1 h-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                  title="色を選択"
+                  onClick={() => openColorPalette("new")}
+                >
+                  <div
+                    className="w-5 h-5 rounded-full"
+                    style={{ backgroundColor: newCategoryColor }}
+                  />
+                  <span className="text-sm text-gray-600 dark:text-gray-300">
+                    色を選択
+                  </span>
+                </button>
+                <button
+                  onClick={handleAddCategory}
+                  disabled={!newCategoryName.trim()}
+                  className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  追加
+                </button>
+              </div>
             </div>
           </div>
 
@@ -100,10 +130,15 @@ export function CategoryManager({
                   className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                 >
                   <div className="flex items-center gap-3">
-                    <div
-                      className="w-4 h-4 rounded-full"
+                    <button
+                      type="button"
+                      className="w-6 h-6 rounded-full flex items-center justify-center hover:opacity-80 transition-opacity"
                       style={{ backgroundColor: category.color }}
-                    />
+                      onClick={() => openColorPalette(category.id)}
+                      title="色を変更"
+                    >
+                      <Palette className="w-3 h-3 text-white opacity-0 hover:opacity-100" />
+                    </button>
                     <span className="font-medium text-gray-800 dark:text-white">
                       {category.name}
                     </span>
@@ -135,6 +170,27 @@ export function CategoryManager({
           </button>
         </div>
       </div>
+
+      {/* カラーパレットモーダル */}
+      {editingCategoryId && (
+        <ColorPalette
+          currentColor={
+            editingCategoryId === "new"
+              ? newCategoryColor
+              : categories.find((c) => c.id === editingCategoryId)?.color ||
+                "#3B82F6"
+          }
+          onColorSelect={(color) => {
+            if (editingCategoryId === "new") {
+              setNewCategoryColor(color);
+            } else {
+              handleColorChange(editingCategoryId, color);
+            }
+            setEditingCategoryId(null);
+          }}
+          onClose={() => setEditingCategoryId(null)}
+        />
+      )}
     </div>
   );
 }
