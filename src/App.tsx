@@ -17,6 +17,8 @@ import {
   Category,
   ExpenseFilters as ExpenseFiltersType,
   SavingTarget,
+  SortConfig,
+  SortField,
 } from "./types";
 import {
   defaultCategories,
@@ -25,15 +27,22 @@ import {
   generateMonthlyData,
   exportToCSV,
   generateId,
+  sortExpenses,
 } from "./utils/dataHelpers";
 
-type TabId = "expenses" | "targets";
+type TabId = "expenses" | "targets" | "search" | "auto-input";
 
 function App() {
   const [expenses, setExpenses] = useLocalStorage<Expense[]>("expenses", []);
   const [categories, setCategories] = useLocalStorage<Category[]>(
     "categories",
-    defaultCategories.map((cat) => ({ ...cat, id: generateId() }))
+    defaultCategories.map((cat) => ({
+      id: generateId(),
+      name: cat.name,
+      color: cat.color,
+      isDefault: cat.isDefault,
+      type: cat.type,
+    }))
   );
   const [savingTargets, setSavingTargets] = useLocalStorage<SavingTarget[]>(
     "savingTargets",
@@ -44,6 +53,8 @@ function App() {
     dateTo: "",
     category: "",
     searchText: "",
+    year: "",
+    month: "",
   });
   const [toast, setToast] = useState<{
     message: string;
@@ -57,12 +68,21 @@ function App() {
     "activeTab",
     "expenses"
   );
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+  const [isCategoryDeleteDialogOpen, setIsCategoryDeleteDialogOpen] =
+    useState(false);
+  const [selectedType, setSelectedType] = useState<"income" | "expense">(
+    "expense"
+  );
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    field: "date",
+    order: "desc",
+  });
 
   const filteredExpenses = useMemo(() => {
-    return filterExpenses(expenses, filters).sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-  }, [expenses, filters]);
+    const filtered = filterExpenses(expenses, filters);
+    return sortExpenses(filtered, sortConfig);
+  }, [expenses, filters, sortConfig]);
 
   const categorySummary = useMemo(() => {
     return generateCategorySummary(filteredExpenses, categories);
@@ -112,29 +132,79 @@ function App() {
     const categoryToDelete = categories.find((cat) => cat.id === id);
     if (!categoryToDelete) return;
 
-    // Check if category is used in any expenses
     const isUsed = expenses.some(
       (expense) => expense.category === categoryToDelete.name
     );
+
     if (isUsed) {
-      setToast({
-        message: "このカテゴリは支出で使用されているため削除できません",
-        type: "error",
-      });
+      setCategoryToDelete(id);
+      setIsCategoryDeleteDialogOpen(true);
       return;
     }
 
+    deleteCategory(id);
+  };
+
+  const deleteCategory = (id: string) => {
+    const categoryToDelete = categories.find((cat) => cat.id === id);
+    if (!categoryToDelete) return;
+
+    const categoryName = categoryToDelete.name;
+    setExpenses((prev) =>
+      prev.filter((expense) => expense.category !== categoryName)
+    );
+
     setCategories((prev) => prev.filter((cat) => cat.id !== id));
-    setToast({ message: "カテゴリを削除しました", type: "success" });
+
+    setSavingTargets((prev) =>
+      prev.filter((target) => target.category !== categoryName)
+    );
+
+    setToast({
+      message: "カテゴリとそのデータを削除しました",
+      type: "success",
+    });
+    setIsCategoryDeleteDialogOpen(false);
+    setCategoryToDelete(null);
+  };
+
+  const cancelCategoryDelete = () => {
+    setIsCategoryDeleteDialogOpen(false);
+    setCategoryToDelete(null);
   };
 
   const handleUpdateCategory = (
     id: string,
     updatedData: Partial<Omit<Category, "id">>
   ) => {
+    if (updatedData.name) {
+      const categoryToUpdate = categories.find((cat) => cat.id === id);
+      if (categoryToUpdate && categoryToUpdate.name !== updatedData.name) {
+        const oldName = categoryToUpdate.name;
+        const newName = updatedData.name;
+
+        setExpenses((prev) =>
+          prev.map((expense) =>
+            expense.category === oldName
+              ? { ...expense, category: newName }
+              : expense
+          )
+        );
+
+        setSavingTargets((prev) =>
+          prev.map((target) =>
+            target.category === oldName
+              ? { ...target, category: newName }
+              : target
+          )
+        );
+      }
+    }
+
     setCategories((prev) =>
       prev.map((cat) => (cat.id === id ? { ...cat, ...updatedData } : cat))
     );
+
     setToast({ message: "カテゴリを更新しました", type: "success" });
   };
 
@@ -162,15 +232,28 @@ function App() {
   const confirmClearAllData = () => {
     setExpenses([]);
     setCategories(
-      defaultCategories.map((cat) => ({ ...cat, id: generateId() }))
+      defaultCategories.map((cat) => ({
+        id: generateId(),
+        name: cat.name,
+        color: cat.color,
+        isDefault: cat.isDefault,
+        type: cat.type,
+      }))
     );
-    setFilters({ dateFrom: "", dateTo: "", category: "", searchText: "" });
+    setSavingTargets([]);
+    setFilters({
+      dateFrom: "",
+      dateTo: "",
+      category: "",
+      searchText: "",
+      year: "",
+      month: "",
+    });
     setToast({ message: "全てのデータを削除しました", type: "success" });
     setIsConfirmDialogOpen(false);
   };
 
   const handleDateSelect = (date: string) => {
-    // 選択された日付に合わせてフィルターを設定
     setFilters((prev) => ({
       ...prev,
       dateFrom: date,
@@ -200,6 +283,13 @@ function App() {
     setToast({ message: "節約目標を削除しました", type: "success" });
   };
 
+  const handleSort = (field: SortField) => {
+    setSortConfig((prev) => ({
+      field,
+      order: prev.field === field && prev.order === "asc" ? "desc" : "asc",
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 transition-colors duration-200">
       <div className="container mx-auto px-4 py-6 max-w-6xl">
@@ -219,12 +309,8 @@ function App() {
               onAddExpense={handleAddExpense}
               onAddCategory={handleAddCategory}
               onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
-            />
-
-            <ExpenseFilters
-              filters={filters}
-              categories={categories}
-              onFiltersChange={setFilters}
+              selectedType={selectedType}
+              setSelectedType={setSelectedType}
             />
 
             <Calendar
@@ -233,17 +319,6 @@ function App() {
               onDateSelect={handleDateSelect}
               onUpdateExpense={handleUpdateExpense}
               onDeleteExpense={handleDeleteExpense}
-            />
-
-            <ExpenseList
-              expenses={filteredExpenses}
-              onDeleteExpense={handleDeleteExpense}
-            />
-
-            <ExpenseSummary
-              categorySummary={categorySummary}
-              monthlyData={monthlyData}
-              totalAmount={totalAmount}
             />
           </div>
         )}
@@ -259,6 +334,200 @@ function App() {
             />
           </div>
         )}
+
+        {activeTab === "search" && (
+          <div className="space-y-6">
+            <ExpenseFilters
+              filters={filters}
+              categories={categories}
+              onFiltersChange={setFilters}
+            />
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
+                  ソート
+                </h3>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleSort("date")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    sortConfig.field === "date"
+                      ? "bg-primary-500 text-white"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                  }`}
+                >
+                  日付
+                  {sortConfig.field === "date" && (
+                    <span>{sortConfig.order === "asc" ? "↑" : "↓"}</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => handleSort("category")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    sortConfig.field === "category"
+                      ? "bg-primary-500 text-white"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                  }`}
+                >
+                  カテゴリ
+                  {sortConfig.field === "category" && (
+                    <span>{sortConfig.order === "asc" ? "↑" : "↓"}</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => handleSort("amount")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    sortConfig.field === "amount"
+                      ? "bg-primary-500 text-white"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                  }`}
+                >
+                  金額
+                  {sortConfig.field === "amount" && (
+                    <span>{sortConfig.order === "asc" ? "↑" : "↓"}</span>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {(filters.dateFrom ||
+              filters.dateTo ||
+              filters.category ||
+              filters.searchText ||
+              filters.year ||
+              filters.month) && (
+              <>
+                <ExpenseList
+                  expenses={filteredExpenses}
+                  onDeleteExpense={handleDeleteExpense}
+                />
+
+                <ExpenseSummary
+                  categorySummary={categorySummary}
+                  monthlyData={monthlyData}
+                  totalAmount={totalAmount}
+                  filters={filters}
+                  expenses={expenses}
+                />
+              </>
+            )}
+
+            {!(
+              filters.dateFrom ||
+              filters.dateTo ||
+              filters.category ||
+              filters.searchText ||
+              filters.year ||
+              filters.month
+            ) && (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center">
+                <p className="text-gray-600 dark:text-gray-300 text-lg">
+                  検索条件を設定して支出データを表示してください。
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "auto-input" && (
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+                自動入力
+              </h3>
+              <form className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      曜日
+                    </label>
+                    <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors">
+                      <option value="">曜日を選択</option>
+                      <option value="monday">月曜日</option>
+                      <option value="tuesday">火曜日</option>
+                      <option value="wednesday">水曜日</option>
+                      <option value="thursday">木曜日</option>
+                      <option value="friday">金曜日</option>
+                      <option value="saturday">土曜日</option>
+                      <option value="sunday">日曜日</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      日付
+                    </label>
+                    <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors">
+                      <option value="">日付を選択</option>
+                      {Array.from({ length: 31 }, (_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {i + 1}日
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      収支
+                    </label>
+                    <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors">
+                      <option value="expense">支出</option>
+                      <option value="income">収入</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      カテゴリ
+                    </label>
+                    <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors">
+                      <option value="">カテゴリを選択</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.name}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      金額
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="金額を入力"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      メモ
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="メモを入力（任意）"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                  >
+                    登録
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
 
       <CategoryManager
@@ -268,12 +537,16 @@ function App() {
         onUpdateCategory={handleUpdateCategory}
         isOpen={isCategoryManagerOpen}
         onClose={() => setIsCategoryManagerOpen(false)}
+        selectedType={selectedType}
+        setSelectedType={setSelectedType}
       />
 
       <ConfirmDialog
         isOpen={isConfirmDialogOpen}
         title="データ削除の確認"
-        message={"全てのデータを削除しますか？\nこの操作は取り消せません。"}
+        message={
+          "全ての支出データと節約目標データを削除しますか？\nこの操作は取り消せません。"
+        }
         confirmLabel="削除する"
         cancelLabel="キャンセル"
         onConfirm={confirmClearAllData}
@@ -292,6 +565,21 @@ function App() {
         onConfirm={confirmExportData}
         onCancel={() => setIsExportDialogOpen(false)}
         type="info"
+      />
+
+      <ConfirmDialog
+        isOpen={isCategoryDeleteDialogOpen}
+        title="カテゴリ削除の確認"
+        message={
+          "この項目には、入力したデータが含まれています。削除するとこの項目のデータは全て削除されます。本当に実行していいですか？"
+        }
+        confirmLabel="実行"
+        cancelLabel="キャンセル"
+        onConfirm={() => categoryToDelete && deleteCategory(categoryToDelete)}
+        onCancel={cancelCategoryDelete}
+        type="warning"
+        requireConfirmation={true}
+        confirmationText="削除に同意します"
       />
 
       {toast && (

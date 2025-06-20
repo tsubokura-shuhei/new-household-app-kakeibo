@@ -4,17 +4,22 @@ import {
   ExpenseFilters as ExpenseFiltersType,
   ExpenseSummary,
   MonthlyData,
+  SortConfig,
 } from "../types";
 
 export const defaultCategories: Omit<Category, "id">[] = [
-  { name: "食費", color: "#3B82F6", isDefault: true },
-  { name: "交通費", color: "#10B981", isDefault: true },
-  { name: "娯楽", color: "#F59E0B", isDefault: true },
-  { name: "光熱費", color: "#EF4444", isDefault: true },
-  { name: "通信費", color: "#8B5CF6", isDefault: true },
-  { name: "日用品", color: "#EC4899", isDefault: true },
-  { name: "医療", color: "#06B6D4", isDefault: true },
-  { name: "衣服", color: "#84CC16", isDefault: true },
+  { name: "食費", color: "#3B82F6", isDefault: true, type: "expense" },
+  { name: "交通費", color: "#10B981", isDefault: true, type: "expense" },
+  { name: "娯楽", color: "#F59E0B", isDefault: true, type: "expense" },
+  { name: "光熱費", color: "#EF4444", isDefault: true, type: "expense" },
+  { name: "通信費", color: "#8B5CF6", isDefault: true, type: "expense" },
+  { name: "日用品", color: "#EC4899", isDefault: true, type: "expense" },
+  { name: "医療", color: "#06B6D4", isDefault: true, type: "expense" },
+  { name: "衣服", color: "#84CC16", isDefault: true, type: "expense" },
+  { name: "給与", color: "#22C55E", isDefault: true, type: "income" },
+  { name: "副業", color: "#14B8A6", isDefault: true, type: "income" },
+  { name: "投資", color: "#6366F1", isDefault: true, type: "income" },
+  { name: "その他収入", color: "#8B5CF6", isDefault: true, type: "income" },
 ];
 
 export function filterExpenses(
@@ -30,6 +35,26 @@ export function filterExpenses(
       !expense.memo.toLowerCase().includes(filters.searchText.toLowerCase())
     )
       return false;
+
+    // 年と月のフィルタリング
+    const expenseDate = new Date(expense.date);
+    const expenseYear = expenseDate.getFullYear().toString();
+    const expenseMonth = (expenseDate.getMonth() + 1).toString();
+
+    // 年のみ指定されている場合
+    if (filters.year && !filters.month) {
+      if (expenseYear !== filters.year) {
+        return false;
+      }
+    }
+
+    // 年と月が両方指定されている場合
+    if (filters.year && filters.month) {
+      if (expenseYear !== filters.year || expenseMonth !== filters.month) {
+        return false;
+      }
+    }
+
     return true;
   });
 }
@@ -113,4 +138,27 @@ export function exportToCSV(expenses: Expense[]): void {
 
 export function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+export function sortExpenses(
+  expenses: Expense[],
+  sortConfig: SortConfig
+): Expense[] {
+  return [...expenses].sort((a, b) => {
+    let comparison = 0;
+
+    switch (sortConfig.field) {
+      case "date":
+        comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+        break;
+      case "category":
+        comparison = a.category.localeCompare(b.category);
+        break;
+      case "amount":
+        comparison = b.amount - a.amount;
+        break;
+    }
+
+    return sortConfig.order === "asc" ? comparison : -comparison;
+  });
 }

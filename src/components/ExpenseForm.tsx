@@ -1,12 +1,20 @@
 import React, { useState } from "react";
-import { Plus, Save, RotateCcw, Settings } from "lucide-react";
-import { Expense, Category } from "../types";
+import { Plus, Settings, ChevronDown } from "lucide-react";
+import { Category } from "../types";
 
 interface ExpenseFormProps {
   categories: Category[];
-  onAddExpense: (expense: Omit<Expense, "id" | "createdAt">) => void;
+  onAddExpense: (expense: {
+    date: string;
+    category: string;
+    amount: number;
+    memo: string;
+    type: "income" | "expense";
+  }) => void;
   onAddCategory: (category: Omit<Category, "id">) => void;
   onOpenCategoryManager: () => void;
+  selectedType: "income" | "expense";
+  setSelectedType: (type: "income" | "expense") => void;
 }
 
 export function ExpenseForm({
@@ -14,79 +22,78 @@ export function ExpenseForm({
   onAddExpense,
   onAddCategory,
   onOpenCategoryManager,
+  selectedType,
+  setSelectedType,
 }: ExpenseFormProps) {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     category: "",
     amount: "",
     memo: "",
+    type: selectedType,
   });
-
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
-
-  const categoryColors = [
-    "#3B82F6",
-    "#10B981",
-    "#F59E0B",
-    "#EF4444",
-    "#8B5CF6",
-    "#EC4899",
-    "#06B6D4",
-    "#84CC16",
-    "#F97316",
-    "#6366F1",
-  ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.category || !formData.amount) return;
 
+    const amount = parseFloat(formData.amount);
+    if (isNaN(amount) || amount <= 0) return;
+
     onAddExpense({
       date: formData.date,
       category: formData.category,
-      amount: parseFloat(formData.amount),
+      amount: amount,
       memo: formData.memo,
+      type: formData.type,
     });
 
-    setFormData({
-      date: new Date().toISOString().split("T")[0],
+    setFormData((prev) => ({
+      ...prev,
       category: "",
       amount: "",
       memo: "",
-    });
-  };
-
-  const handleReset = () => {
-    setFormData({
-      date: new Date().toISOString().split("T")[0],
-      category: "",
-      amount: "",
-      memo: "",
-    });
+    }));
   };
 
   const handleAddNewCategory = () => {
     if (!newCategoryName.trim()) return;
 
-    const randomColor =
-      categoryColors[Math.floor(Math.random() * categoryColors.length)];
     onAddCategory({
       name: newCategoryName.trim(),
-      color: randomColor,
+      color: "#3B82F6",
       isDefault: false,
+      type: formData.type,
     });
 
-    setFormData((prev) => ({ ...prev, category: newCategoryName.trim() }));
     setNewCategoryName("");
     setShowNewCategory(false);
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const halfWidthValue = e.target.value.replace(/[０-９]/g, (s) => {
+      return String.fromCharCode(s.charCodeAt(0) - 0xfee0);
+    });
+    const numericValue = halfWidthValue.replace(/[^0-9.]/g, "");
+    setFormData((prev) => ({ ...prev, amount: numericValue }));
+  };
+
+  const handleTypeChange = (type: "income" | "expense") => {
+    setFormData((prev) => ({
+      ...prev,
+      type,
+      category: "",
+    }));
+    setSelectedType(type);
   };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
       <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
         <Plus className="w-5 h-5 text-primary-500" />
-        支出を記録
+        収支を記録
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -108,6 +115,32 @@ export function ExpenseForm({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              収支
+            </label>
+            <div className="relative">
+              <select
+                value={selectedType}
+                onChange={(e) =>
+                  handleTypeChange(e.target.value as "income" | "expense")
+                }
+                className={`appearance-none w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors text-lg font-bold ${
+                  selectedType === "expense"
+                    ? "text-orange-500"
+                    : "text-green-600"
+                }`}
+                required
+              >
+                <option value="expense">支出</option>
+                <option value="income">収入</option>
+              </select>
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                <ChevronDown className="w-6 h-6 text-black" strokeWidth={3} />
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               カテゴリ
             </label>
             <div className="flex gap-2">
@@ -120,11 +153,13 @@ export function ExpenseForm({
                 required
               >
                 <option value="">カテゴリを選択</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.name}>
-                    {category.name}
-                  </option>
-                ))}
+                {categories
+                  .filter((category) => category.type === formData.type)
+                  .map((category) => (
+                    <option key={category.id} value={category.name}>
+                      {category.name}
+                    </option>
+                  ))}
               </select>
               <button
                 type="button"
@@ -167,66 +202,43 @@ export function ExpenseForm({
               </div>
             )}
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              金額 (円)
+              金額
             </label>
             <input
               type="text"
-              inputMode="numeric"
               value={formData.amount}
-              onChange={(e) => {
-                // 全角数字を半角に変換
-                const halfWidthValue = e.target.value.replace(
-                  /[０-９]/g,
-                  (s) => {
-                    return String.fromCharCode(s.charCodeAt(0) - 0xfee0);
-                  }
-                );
-                // 数字と小数点のみ許可
-                const numericValue = halfWidthValue.replace(/[^0-9.]/g, "");
-                setFormData((prev) => ({ ...prev, amount: numericValue }));
-              }}
+              onChange={handleAmountChange}
+              placeholder="金額を入力"
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
-              placeholder="0"
               required
             />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              メモ
-            </label>
-            <input
-              type="text"
-              value={formData.memo}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, memo: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
-              placeholder="メモ（任意）"
-            />
-          </div>
         </div>
 
-        <div className="flex gap-3 pt-2">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            メモ
+          </label>
+          <input
+            type="text"
+            value={formData.memo}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, memo: e.target.value }))
+            }
+            placeholder="メモを入力（任意）"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+          />
+        </div>
+
+        <div className="flex justify-end">
           <button
             type="submit"
-            className="flex items-center gap-2 px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors font-medium"
+            className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
           >
-            <Save className="w-4 h-4" />
             登録
-          </button>
-          <button
-            type="button"
-            onClick={handleReset}
-            className="flex items-center gap-2 px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium"
-          >
-            <RotateCcw className="w-4 h-4" />
-            リセット
           </button>
         </div>
       </form>

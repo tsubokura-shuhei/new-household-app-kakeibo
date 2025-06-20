@@ -1,39 +1,19 @@
 // 2023年と2024年の日本の祝日データ
 // 実際のプロダクションでは、より完全なデータや祝日計算ライブラリを使用することをお勧めします
 
+// 2023年・2024年の祝日データは不要なので削除
+
 interface Holiday {
   month: number;
   day: number;
   name: string;
 }
 
-// 2023年の祝日データ
-const holidays2023: Holiday[] = [
+// 2026年の祝日データ
+const holidays2026: Holiday[] = [
   { month: 1, day: 1, name: "元日" },
-  { month: 1, day: 2, name: "元日 振替休日" },
-  { month: 1, day: 9, name: "成人の日" },
+  { month: 1, day: 12, name: "成人の日" },
   { month: 2, day: 11, name: "建国記念の日" },
-  { month: 2, day: 23, name: "天皇誕生日" },
-  { month: 3, day: 21, name: "春分の日" },
-  { month: 4, day: 29, name: "昭和の日" },
-  { month: 5, day: 3, name: "憲法記念日" },
-  { month: 5, day: 4, name: "みどりの日" },
-  { month: 5, day: 5, name: "こどもの日" },
-  { month: 7, day: 17, name: "海の日" },
-  { month: 8, day: 11, name: "山の日" },
-  { month: 9, day: 18, name: "敬老の日" },
-  { month: 9, day: 23, name: "秋分の日" },
-  { month: 10, day: 9, name: "スポーツの日" },
-  { month: 11, day: 3, name: "文化の日" },
-  { month: 11, day: 23, name: "勤労感謝の日" },
-];
-
-// 2024年の祝日データ
-const holidays2024: Holiday[] = [
-  { month: 1, day: 1, name: "元日" },
-  { month: 1, day: 8, name: "成人の日" },
-  { month: 2, day: 11, name: "建国記念の日" },
-  { month: 2, day: 12, name: "建国記念の日 振替休日" },
   { month: 2, day: 23, name: "天皇誕生日" },
   { month: 3, day: 20, name: "春分の日" },
   { month: 4, day: 29, name: "昭和の日" },
@@ -41,15 +21,53 @@ const holidays2024: Holiday[] = [
   { month: 5, day: 4, name: "みどりの日" },
   { month: 5, day: 5, name: "こどもの日" },
   { month: 5, day: 6, name: "こどもの日 振替休日" },
-  { month: 7, day: 15, name: "海の日" },
+  { month: 7, day: 20, name: "海の日" },
   { month: 8, day: 11, name: "山の日" },
-  { month: 8, day: 12, name: "山の日 振替休日" },
-  { month: 9, day: 16, name: "敬老の日" },
-  { month: 9, day: 22, name: "秋分の日" },
-  { month: 9, day: 23, name: "秋分の日 振替休日" },
-  { month: 10, day: 14, name: "スポーツの日" },
+  { month: 9, day: 21, name: "敬老の日" },
+  { month: 9, day: 23, name: "秋分の日" },
+  { month: 10, day: 12, name: "スポーツの日" },
   { month: 11, day: 3, name: "文化の日" },
-  { month: 11, day: 4, name: "文化の日 振替休日" },
+  { month: 11, day: 23, name: "勤労感謝の日" },
+];
+
+// 2027年の祝日データ
+const holidays2027: Holiday[] = [
+  { month: 1, day: 1, name: "元日" },
+  { month: 1, day: 11, name: "成人の日" },
+  { month: 2, day: 11, name: "建国記念の日" },
+  { month: 2, day: 23, name: "天皇誕生日" },
+  { month: 3, day: 21, name: "春分の日" },
+  { month: 4, day: 29, name: "昭和の日" },
+  { month: 5, day: 3, name: "憲法記念日" },
+  { month: 5, day: 4, name: "みどりの日" },
+  { month: 5, day: 5, name: "こどもの日" },
+  { month: 7, day: 19, name: "海の日" },
+  { month: 8, day: 11, name: "山の日" },
+  { month: 9, day: 20, name: "敬老の日" },
+  { month: 9, day: 23, name: "秋分の日" },
+  { month: 10, day: 11, name: "スポーツの日" },
+  { month: 11, day: 3, name: "文化の日" },
+  { month: 11, day: 23, name: "勤労感謝の日" },
+];
+
+// 2025年の祝日データ
+const holidays2025: Holiday[] = [
+  { month: 1, day: 1, name: "元日" },
+  { month: 1, day: 13, name: "成人の日" },
+  { month: 2, day: 11, name: "建国記念の日" },
+  { month: 2, day: 23, name: "天皇誕生日" },
+  { month: 3, day: 21, name: "春分の日" },
+  { month: 4, day: 29, name: "昭和の日" },
+  { month: 5, day: 3, name: "憲法記念日" },
+  { month: 5, day: 4, name: "みどりの日" },
+  { month: 5, day: 5, name: "こどもの日" },
+  { month: 5, day: 6, name: "こどもの日 振替休日" },
+  { month: 7, day: 21, name: "海の日" },
+  { month: 8, day: 11, name: "山の日" },
+  { month: 9, day: 15, name: "敬老の日" },
+  { month: 9, day: 23, name: "秋分の日" },
+  { month: 10, day: 13, name: "スポーツの日" },
+  { month: 11, day: 3, name: "文化の日" },
   { month: 11, day: 23, name: "勤労感謝の日" },
 ];
 
@@ -62,11 +80,17 @@ export function getHolidaysForMonth(
 
   // 年に応じて祝日データを選択
   const holidaysForYear =
-    year === 2023 ? holidays2023 : year === 2024 ? holidays2024 : [];
+    year === 2025
+      ? holidays2025
+      : year === 2026
+      ? holidays2026
+      : year === 2027
+      ? holidays2027
+      : [];
 
   // 指定された月の祝日を抽出
   holidaysForYear
-    .filter((holiday) => holiday.month === month + 1) // JavaScriptの月は0から始まるため+1
+    .filter((holiday) => holiday.month === month + 1)
     .forEach((holiday) => {
       holidaysMap[holiday.day] = holiday.name;
     });

@@ -23,6 +23,7 @@ export function DayExpensesModal({
 }: DayExpensesModalProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState<string>("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -39,11 +40,7 @@ export function DayExpensesModal({
 
   // 金額のフォーマット
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("ja-JP", {
-      style: "currency",
-      currency: "JPY",
-      currencyDisplay: "symbol",
-    }).format(amount);
+    return new Intl.NumberFormat("ja-JP").format(amount) + "円";
   };
 
   // カテゴリーの色を取得
@@ -72,11 +69,20 @@ export function DayExpensesModal({
     setEditingId(null);
   };
 
-  // 削除の確認
-  const confirmDelete = (id: string) => {
-    if (window.confirm("この支出を削除してもよろしいですか？")) {
-      onDeleteExpense(id);
+  // 削除の確認モーダルを開く
+  const openConfirmDelete = (id: string) => {
+    setConfirmDeleteId(id);
+  };
+  // 削除の実行
+  const handleDelete = () => {
+    if (confirmDeleteId) {
+      onDeleteExpense(confirmDeleteId);
+      setConfirmDeleteId(null);
     }
+  };
+  // モーダルを閉じる
+  const closeConfirmDelete = () => {
+    setConfirmDeleteId(null);
   };
 
   // 金額入力の処理（半角変換）
@@ -91,10 +97,13 @@ export function DayExpensesModal({
   };
 
   // 合計金額の計算
-  const totalAmount = expenses.reduce(
-    (sum, expense) => sum + expense.amount,
-    0
-  );
+  // const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalIncome = expenses
+    .filter((e) => e.type === "income")
+    .reduce((sum, e) => sum + e.amount, 0);
+  const totalExpense = expenses
+    .filter((e) => e.type === "expense")
+    .reduce((sum, e) => sum + e.amount, 0);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -118,7 +127,11 @@ export function DayExpensesModal({
                 {expenses.map((expense) => (
                   <div
                     key={expense.id}
-                    className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                    className={`p-3 rounded-lg ${
+                      expense.type === "income"
+                        ? "bg-green-50 dark:bg-green-900/20"
+                        : "bg-orange-50 dark:bg-orange-900/20"
+                    }`}
                   >
                     <div className="flex items-center justify-between gap-3 mb-2">
                       <div className="flex items-center gap-3">
@@ -131,10 +144,19 @@ export function DayExpensesModal({
                         <span className="font-medium text-gray-800 dark:text-white">
                           {expense.category}
                         </span>
+                        <span
+                          className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
+                            expense.type === "income"
+                              ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300"
+                              : "bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-400"
+                          }`}
+                        >
+                          {expense.type === "income" ? "収入" : "支出"}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => confirmDelete(expense.id)}
+                          onClick={() => openConfirmDelete(expense.id)}
                           className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-full transition-colors"
                           title="削除"
                         >
@@ -186,7 +208,13 @@ export function DayExpensesModal({
                         >
                           <Edit className="w-4 h-4" />
                         </button>
-                        <p className="font-bold text-gray-900 dark:text-white">
+                        <p
+                          className={`font-bold ${
+                            expense.type === "income"
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-orange-500 dark:text-orange-400"
+                          }`}
+                        >
                           {formatCurrency(expense.amount)}
                         </p>
                       </div>
@@ -195,15 +223,27 @@ export function DayExpensesModal({
                 ))}
               </div>
 
-              <div className="mt-4 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
-                    合計
-                  </span>
-                  <span className="font-bold text-lg text-primary-700 dark:text-primary-300">
-                    {formatCurrency(totalAmount)}
-                  </span>
-                </div>
+              <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg space-y-2">
+                {totalIncome > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium" style={{ color: "#16A34A" }}>
+                      収入合計
+                    </span>
+                    <span className="font-bold" style={{ color: "#16A34A" }}>
+                      {formatCurrency(totalIncome)}
+                    </span>
+                  </div>
+                )}
+                {totalExpense > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium" style={{ color: "#F97316" }}>
+                      支出合計
+                    </span>
+                    <span className="font-bold" style={{ color: "#F97316" }}>
+                      {formatCurrency(totalExpense)}
+                    </span>
+                  </div>
+                )}
               </div>
             </>
           ) : (
@@ -222,6 +262,32 @@ export function DayExpensesModal({
           </button>
         </div>
       </div>
+
+      {/* 削除確認モーダル */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-xs w-full">
+            <h2 className="text-lg font-bold mb-3 text-gray-800">削除の確認</h2>
+            <p className="mb-6 text-gray-700">
+              この収支記録を削除してもよろしいですか？
+            </p>
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={closeConfirmDelete}
+                className="px-4 py-2 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600"
+              >
+                削除する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

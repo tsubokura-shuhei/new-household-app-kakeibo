@@ -264,7 +264,7 @@ export function Calendar({
               }
               onMouseLeave={() => setShowHolidayTooltip(null)}
               className={`
-                relative aspect-square flex items-center justify-center text-sm
+                relative aspect-square flex flex-col items-center justify-center text-sm
                 ${
                   day === null
                     ? "cursor-default"
@@ -277,6 +277,11 @@ export function Calendar({
               title={holidayName || undefined}
             >
               <span className={dateColor}>{day !== null && day}</span>
+              {holidayName && (
+                <span className="text-[10px] text-red-500 mt-0.5 leading-none">
+                  {holidayName}
+                </span>
+              )}
               {day !== null && hasExpenseOnDate(day) && (
                 <div className="absolute bottom-1 w-1.5 h-1.5 bg-primary-500 rounded-full"></div>
               )}

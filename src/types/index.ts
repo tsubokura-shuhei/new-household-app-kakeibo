@@ -5,6 +5,7 @@ export interface Expense {
   amount: number;
   memo: string;
   createdAt: Date;
+  type: "income" | "expense";
 }
 
 export interface Category {
@@ -12,6 +13,7 @@ export interface Category {
   name: string;
   color: string;
   isDefault: boolean;
+  type: "income" | "expense";
 }
 
 export interface ExpenseFilters {
@@ -19,6 +21,8 @@ export interface ExpenseFilters {
   dateTo: string;
   category: string;
   searchText: string;
+  year: string;
+  month: string;
 }
 
 export interface ExpenseSummary {
@@ -36,4 +40,12 @@ export interface MonthlyData {
 export interface SavingTarget {
   category: string;
   amount: number;
+}
+
+export type SortField = "date" | "category" | "amount";
+export type SortOrder = "asc" | "desc";
+
+export interface SortConfig {
+  field: SortField;
+  order: SortOrder;
 }
