@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Header } from "./components/Header";
 import { ExpenseForm } from "./components/ExpenseForm";
 import { ExpenseFilters } from "./components/ExpenseFilters";
@@ -12,6 +12,8 @@ import { SavingTargets } from "./components/SavingTargets";
 import { TabNavigation } from "./components/TabNavigation";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useDarkMode } from "./hooks/useDarkMode";
+import { initializeSupabase } from "./utils/supabaseTest";
+import { supabaseHelpers } from "./utils/supabaseHelpers";
 import {
   Expense,
   Category,
@@ -79,6 +81,47 @@ function App() {
     order: "desc",
   });
 
+  // Supabase接続テストとデータ読み込み
+  useEffect(() => {
+    const initializeApp = async () => {
+      const isConnected = await initializeSupabase();
+      if (isConnected) {
+        // Supabaseからデータを読み込み
+        try {
+          const [supabaseExpenses, supabaseCategories, supabaseSavingTargets] =
+            await Promise.all([
+              supabaseHelpers.getExpenses(),
+              supabaseHelpers.getCategories(),
+              supabaseHelpers.getSavingTargets(),
+            ]);
+
+          // データが存在する場合はローカルストレージを更新
+          if (supabaseExpenses.length > 0) {
+            setExpenses(supabaseExpenses);
+          }
+          if (supabaseCategories.length > 0) {
+            setCategories(supabaseCategories);
+          }
+          if (supabaseSavingTargets.length > 0) {
+            setSavingTargets(supabaseSavingTargets);
+          }
+
+          console.log("Supabaseからデータを読み込みました:", {
+            expenses: supabaseExpenses.length,
+            categories: supabaseCategories.length,
+            savingTargets: supabaseSavingTargets.length,
+          });
+        } catch (error) {
+          console.error("Error loading data from Supabase:", error);
+        }
+      } else {
+        setToast({ message: "Supabase接続失敗", type: "error" });
+      }
+    };
+
+    initializeApp();
+  }, []);
+
   const filteredExpenses = useMemo(() => {
     const filtered = filterExpenses(expenses, filters);
     return sortExpenses(filtered, sortConfig);
@@ -96,22 +139,45 @@ function App() {
     return filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   }, [filteredExpenses]);
 
-  const handleAddExpense = (expenseData: Omit<Expense, "id" | "createdAt">) => {
-    const newExpense: Expense = {
-      ...expenseData,
-      id: generateId(),
-      createdAt: new Date(),
-    };
-    setExpenses((prev) => [...prev, newExpense]);
-    setToast({ message: "支出を登録しました", type: "success" });
+  const handleAddExpense = async (
+    expenseData: Omit<Expense, "id" | "createdAt">
+  ) => {
+    try {
+      // Supabaseにデータを追加
+      const newExpense = await supabaseHelpers.addExpense(expenseData);
+
+      if (newExpense) {
+        // ローカル状態も更新
+        setExpenses((prev) => [...prev, newExpense]);
+        setToast({ message: "支出を登録しました", type: "success" });
+      } else {
+        setToast({ message: "支出の登録に失敗しました", type: "error" });
+      }
+    } catch (error) {
+      console.error("Error adding expense:", error);
+      setToast({ message: "支出の登録に失敗しました", type: "error" });
+    }
   };
 
-  const handleDeleteExpense = (id: string) => {
-    setExpenses((prev) => prev.filter((expense) => expense.id !== id));
-    setToast({ message: "支出を削除しました", type: "success" });
+  const handleDeleteExpense = async (id: string) => {
+    try {
+      // Supabaseからデータを削除
+      const success = await supabaseHelpers.deleteExpense(id);
+
+      if (success) {
+        // ローカル状態も更新
+        setExpenses((prev) => prev.filter((expense) => expense.id !== id));
+        setToast({ message: "支出を削除しました", type: "success" });
+      } else {
+        setToast({ message: "支出の削除に失敗しました", type: "error" });
+      }
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+      setToast({ message: "支出の削除に失敗しました", type: "error" });
+    }
   };
 
-  const handleAddCategory = (categoryData: Omit<Category, "id">) => {
+  const handleAddCategory = async (categoryData: Omit<Category, "id">) => {
     const existingCategory = categories.find(
       (cat) => cat.name === categoryData.name
     );
@@ -120,12 +186,21 @@ function App() {
       return;
     }
 
-    const newCategory: Category = {
-      ...categoryData,
-      id: generateId(),
-    };
-    setCategories((prev) => [...prev, newCategory]);
-    setToast({ message: "カテゴリを追加しました", type: "success" });
+    try {
+      // Supabaseにカテゴリを追加
+      const newCategory = await supabaseHelpers.addCategory(categoryData);
+
+      if (newCategory) {
+        // ローカル状態も更新
+        setCategories((prev) => [...prev, newCategory]);
+        setToast({ message: "カテゴリを追加しました", type: "success" });
+      } else {
+        setToast({ message: "カテゴリの追加に失敗しました", type: "error" });
+      }
+    } catch (error) {
+      console.error("Error adding category:", error);
+      setToast({ message: "カテゴリの追加に失敗しました", type: "error" });
+    }
   };
 
   const handleDeleteCategory = (id: string) => {
@@ -145,27 +220,39 @@ function App() {
     deleteCategory(id);
   };
 
-  const deleteCategory = (id: string) => {
+  const deleteCategory = async (id: string) => {
     const categoryToDelete = categories.find((cat) => cat.id === id);
     if (!categoryToDelete) return;
 
-    const categoryName = categoryToDelete.name;
-    setExpenses((prev) =>
-      prev.filter((expense) => expense.category !== categoryName)
-    );
+    try {
+      // Supabaseからカテゴリを削除
+      const success = await supabaseHelpers.deleteCategory(id);
 
-    setCategories((prev) => prev.filter((cat) => cat.id !== id));
+      if (success) {
+        const categoryName = categoryToDelete.name;
 
-    setSavingTargets((prev) =>
-      prev.filter((target) => target.category !== categoryName)
-    );
+        // 関連するデータも削除
+        setExpenses((prev) =>
+          prev.filter((expense) => expense.category !== categoryName)
+        );
+        setCategories((prev) => prev.filter((cat) => cat.id !== id));
+        setSavingTargets((prev) =>
+          prev.filter((target) => target.category !== categoryName)
+        );
 
-    setToast({
-      message: "カテゴリとそのデータを削除しました",
-      type: "success",
-    });
-    setIsCategoryDeleteDialogOpen(false);
-    setCategoryToDelete(null);
+        setToast({
+          message: "カテゴリとそのデータを削除しました",
+          type: "success",
+        });
+        setIsCategoryDeleteDialogOpen(false);
+        setCategoryToDelete(null);
+      } else {
+        setToast({ message: "カテゴリの削除に失敗しました", type: "error" });
+      }
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      setToast({ message: "カテゴリの削除に失敗しました", type: "error" });
+    }
   };
 
   const cancelCategoryDelete = () => {
@@ -173,39 +260,52 @@ function App() {
     setCategoryToDelete(null);
   };
 
-  const handleUpdateCategory = (
+  const handleUpdateCategory = async (
     id: string,
     updatedData: Partial<Omit<Category, "id">>
   ) => {
-    if (updatedData.name) {
-      const categoryToUpdate = categories.find((cat) => cat.id === id);
-      if (categoryToUpdate && categoryToUpdate.name !== updatedData.name) {
-        const oldName = categoryToUpdate.name;
-        const newName = updatedData.name;
+    try {
+      // Supabaseでカテゴリを更新
+      const success = await supabaseHelpers.updateCategory(id, updatedData);
 
-        setExpenses((prev) =>
-          prev.map((expense) =>
-            expense.category === oldName
-              ? { ...expense, category: newName }
-              : expense
-          )
+      if (success) {
+        // ローカル状態も更新
+        if (updatedData.name) {
+          const categoryToUpdate = categories.find((cat) => cat.id === id);
+          if (categoryToUpdate && categoryToUpdate.name !== updatedData.name) {
+            const oldName = categoryToUpdate.name;
+            const newName = updatedData.name;
+
+            setExpenses((prev) =>
+              prev.map((expense) =>
+                expense.category === oldName
+                  ? { ...expense, category: newName }
+                  : expense
+              )
+            );
+
+            setSavingTargets((prev) =>
+              prev.map((target) =>
+                target.category === oldName
+                  ? { ...target, category: newName }
+                  : target
+              )
+            );
+          }
+        }
+
+        setCategories((prev) =>
+          prev.map((cat) => (cat.id === id ? { ...cat, ...updatedData } : cat))
         );
 
-        setSavingTargets((prev) =>
-          prev.map((target) =>
-            target.category === oldName
-              ? { ...target, category: newName }
-              : target
-          )
-        );
+        setToast({ message: "カテゴリを更新しました", type: "success" });
+      } else {
+        setToast({ message: "カテゴリの更新に失敗しました", type: "error" });
       }
+    } catch (error) {
+      console.error("Error updating category:", error);
+      setToast({ message: "カテゴリの更新に失敗しました", type: "error" });
     }
-
-    setCategories((prev) =>
-      prev.map((cat) => (cat.id === id ? { ...cat, ...updatedData } : cat))
-    );
-
-    setToast({ message: "カテゴリを更新しました", type: "success" });
   };
 
   const handleExportData = () => {
@@ -262,25 +362,64 @@ function App() {
     setToast({ message: `${date}の支出を表示します`, type: "success" });
   };
 
-  const handleUpdateExpense = (id: string, amount: number) => {
-    setExpenses((prev) =>
-      prev.map((expense) =>
-        expense.id === id ? { ...expense, amount } : expense
-      )
-    );
-    setToast({ message: "支出を更新しました", type: "success" });
+  const handleUpdateExpense = async (id: string, amount: number) => {
+    try {
+      // Supabaseで支出データを更新
+      const success = await supabaseHelpers.updateExpense(id, amount);
+
+      if (success) {
+        // ローカル状態も更新
+        setExpenses((prev) =>
+          prev.map((expense) =>
+            expense.id === id ? { ...expense, amount } : expense
+          )
+        );
+        setToast({ message: "支出を更新しました", type: "success" });
+      } else {
+        setToast({ message: "支出の更新に失敗しました", type: "error" });
+      }
+    } catch (error) {
+      console.error("Error updating expense:", error);
+      setToast({ message: "支出の更新に失敗しました", type: "error" });
+    }
   };
 
-  const handleAddSavingTarget = (target: SavingTarget) => {
-    setSavingTargets((prev) => [...prev, target]);
-    setToast({ message: "節約目標を追加しました", type: "success" });
+  const handleAddSavingTarget = async (target: SavingTarget) => {
+    try {
+      // Supabaseに貯金目標を追加
+      const success = await supabaseHelpers.addSavingTarget(target);
+
+      if (success) {
+        // ローカル状態も更新
+        setSavingTargets((prev) => [...prev, target]);
+        setToast({ message: "節約目標を追加しました", type: "success" });
+      } else {
+        setToast({ message: "節約目標の追加に失敗しました", type: "error" });
+      }
+    } catch (error) {
+      console.error("Error adding saving target:", error);
+      setToast({ message: "節約目標の追加に失敗しました", type: "error" });
+    }
   };
 
-  const handleDeleteSavingTarget = (category: string) => {
-    setSavingTargets((prev) =>
-      prev.filter((target) => target.category !== category)
-    );
-    setToast({ message: "節約目標を削除しました", type: "success" });
+  const handleDeleteSavingTarget = async (category: string) => {
+    try {
+      // Supabaseから貯金目標を削除
+      const success = await supabaseHelpers.deleteSavingTarget(category);
+
+      if (success) {
+        // ローカル状態も更新
+        setSavingTargets((prev) =>
+          prev.filter((target) => target.category !== category)
+        );
+        setToast({ message: "節約目標を削除しました", type: "success" });
+      } else {
+        setToast({ message: "節約目標の削除に失敗しました", type: "error" });
+      }
+    } catch (error) {
+      console.error("Error deleting saving target:", error);
+      setToast({ message: "節約目標の削除に失敗しました", type: "error" });
+    }
   };
 
   const handleSort = (field: SortField) => {
@@ -434,97 +573,17 @@ function App() {
         {activeTab === "auto-input" && (
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-              <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
-                自動入力
-              </h3>
-              <form className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      曜日
-                    </label>
-                    <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors">
-                      <option value="">曜日を選択</option>
-                      <option value="monday">月曜日</option>
-                      <option value="tuesday">火曜日</option>
-                      <option value="wednesday">水曜日</option>
-                      <option value="thursday">木曜日</option>
-                      <option value="friday">金曜日</option>
-                      <option value="saturday">土曜日</option>
-                      <option value="sunday">日曜日</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      日付
-                    </label>
-                    <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors">
-                      <option value="">日付を選択</option>
-                      {Array.from({ length: 31 }, (_, i) => (
-                        <option key={i + 1} value={i + 1}>
-                          {i + 1}日
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      収支
-                    </label>
-                    <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors">
-                      <option value="expense">支出</option>
-                      <option value="income">収入</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      カテゴリ
-                    </label>
-                    <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors">
-                      <option value="">カテゴリを選択</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.name}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      金額
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="金額を入力"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      メモ
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="メモを入力（任意）"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
-                    />
-                  </div>
+              <div className="text-center">
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+                  自動入力機能
+                </h3>
+                <div className="space-y-4">
+                  <div className="text-4xl mb-4">📝</div>
+                  <p className="text-gray-600 dark:text-gray-300 text-lg">
+                    今後機能を追加しますね
+                  </p>
                 </div>
-
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
-                  >
-                    登録
-                  </button>
-                </div>
-              </form>
+              </div>
             </div>
           </div>
         )}
