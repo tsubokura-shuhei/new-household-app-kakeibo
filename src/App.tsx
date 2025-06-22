@@ -329,28 +329,41 @@ function App() {
     setIsConfirmDialogOpen(true);
   };
 
-  const confirmClearAllData = () => {
-    setExpenses([]);
-    setCategories(
-      defaultCategories.map((cat) => ({
-        id: generateId(),
-        name: cat.name,
-        color: cat.color,
-        isDefault: cat.isDefault,
-        type: cat.type,
-      }))
-    );
-    setSavingTargets([]);
-    setFilters({
-      dateFrom: "",
-      dateTo: "",
-      category: "",
-      searchText: "",
-      year: "",
-      month: "",
-    });
-    setToast({ message: "全てのデータを削除しました", type: "success" });
-    setIsConfirmDialogOpen(false);
+  const confirmClearAllData = async () => {
+    try {
+      // Supabaseから全データを削除
+      const success = await supabaseHelpers.clearAllData();
+
+      if (success) {
+        // ローカル状態も更新
+        setExpenses([]);
+        setCategories(
+          defaultCategories.map((cat) => ({
+            id: generateId(),
+            name: cat.name,
+            color: cat.color,
+            isDefault: cat.isDefault,
+            type: cat.type,
+          }))
+        );
+        setSavingTargets([]);
+        setFilters({
+          dateFrom: "",
+          dateTo: "",
+          category: "",
+          searchText: "",
+          year: "",
+          month: "",
+        });
+        setToast({ message: "全てのデータを削除しました", type: "success" });
+        setIsConfirmDialogOpen(false);
+      } else {
+        setToast({ message: "データの削除に失敗しました", type: "error" });
+      }
+    } catch (error) {
+      console.error("Error clearing all data:", error);
+      setToast({ message: "データの削除に失敗しました", type: "error" });
+    }
   };
 
   const handleDateSelect = (date: string) => {

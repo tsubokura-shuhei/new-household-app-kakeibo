@@ -257,4 +257,48 @@ export const supabaseHelpers = {
 
     return true;
   },
+
+  // 全データ削除（支出、カテゴリ、貯金目標）
+  async clearAllData(): Promise<boolean> {
+    try {
+      // 支出データを削除
+      const { error: expensesError } = await supabase
+        .from("expenses")
+        .delete()
+        .eq("user_id", TEMP_USER_ID);
+
+      if (expensesError) {
+        console.error("Error deleting expenses:", expensesError);
+        return false;
+      }
+
+      // カテゴリデータを削除（デフォルトカテゴリ以外）
+      const { error: categoriesError } = await supabase
+        .from("categories")
+        .delete()
+        .eq("user_id", TEMP_USER_ID)
+        .eq("is_default", false);
+
+      if (categoriesError) {
+        console.error("Error deleting categories:", categoriesError);
+        return false;
+      }
+
+      // 貯金目標データを削除
+      const { error: savingTargetsError } = await supabase
+        .from("saving_targets")
+        .delete()
+        .eq("user_id", TEMP_USER_ID);
+
+      if (savingTargetsError) {
+        console.error("Error deleting saving targets:", savingTargetsError);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error clearing all data:", error);
+      return false;
+    }
+  },
 };
