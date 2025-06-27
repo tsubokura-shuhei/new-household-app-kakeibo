@@ -180,13 +180,13 @@ export function ExpenseForm({
             </div>
 
             {showNewCategory && (
-              <div className="mt-2 flex gap-2 animate-slide-up">
+              <div className="mt-2 flex flex-col sm:flex-row gap-2 animate-slide-up">
                 <input
                   type="text"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   placeholder="新しいカテゴリ名"
-                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+                  className="flex-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
                   onKeyDown={(e) =>
                     e.key === "Enter" &&
                     (e.preventDefault(), handleAddNewCategory())
@@ -195,7 +195,7 @@ export function ExpenseForm({
                 <button
                   type="button"
                   onClick={handleAddNewCategory}
-                  className="px-3 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                  className="w-full sm:w-auto px-3 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
                 >
                   追加
                 </button>
