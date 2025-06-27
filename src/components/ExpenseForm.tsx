@@ -207,14 +207,20 @@ export function ExpenseForm({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               金額
             </label>
-            <input
-              type="text"
-              value={formData.amount}
-              onChange={handleAmountChange}
-              placeholder="金額を入力"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
-              required
-            />
+            <div className="flex">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={formData.amount}
+                onChange={handleAmountChange}
+                placeholder="金額を入力"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-l-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+                required
+              />
+              <span className="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-r-lg">
+                円
+              </span>
+            </div>
           </div>
         </div>
 
