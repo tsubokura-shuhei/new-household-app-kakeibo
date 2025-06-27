@@ -347,6 +347,7 @@ export function SavingTargets({
                   {categories
                     .filter(
                       (category) =>
+                        category.type === "expense" &&
                         !savingTargets.some(
                           (target) => target.category === category.name
                         )
