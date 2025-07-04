@@ -199,7 +199,7 @@ export function ExpenseSummary({
               カテゴリ別（棒グラフ）
             </div>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={categorySummary}>
+              <BarChart data={[...categorySummary].sort((a, b) => a.amount - b.amount)}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="#374151"
@@ -209,10 +209,16 @@ export function ExpenseSummary({
                 <YAxis
                   stroke="#6B7280"
                   tickFormatter={(value) => formatCurrency(value)}
+                  domain={[0, (dataMax: number) => Math.ceil(dataMax / 1000) * 1000]}
+                  allowDecimals={false}
+                  scale="linear"
+                  type="number"
+                  tickCount={6}
+                  width={80}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="amount">
-                  {categorySummary.map((entry, index) => (
+                  {[...categorySummary].sort((a, b) => b.amount - a.amount).map((entry, index) => (
                     <Cell key={`bar-cell-${index}`} fill={entry.color} />
                   ))}
                 </Bar>
